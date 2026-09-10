@@ -3,7 +3,6 @@ Servidor gRPC del servicio de CAPTCHA.
 """
 
 import os
-import time
 import asyncio
 import logging
 
@@ -21,20 +20,17 @@ class CaptchaSolverServicer(pb_grpc.CaptchaSolverServicer):
     async def HealthCheck(self, request, context):
         return pb.HealthCheckResponse(ok=True, version="1.0.0")
 
-    async def Solve(self, request, context):
-        start = time.time()
-        logger.info("Solve -> type=%s, %d bytes", pb.CaptchaType.Name(request.type), len(request.payload))
-        token = await solver.resolver_recaptcha_v2(site_key="", page_url="")
-        elapsed = int((time.time() - start) * 1000)
-        return pb.SolveResponse(success=bool(token), token=token, elapsed=elapsed)
-
     async def SolveRecaptchaV2(self, request, context):
         logger.info("SolveRecaptchaV2 -> %s", request.site_key)
-        token = await solver.resolver_recaptcha_v2(
-            site_key=request.site_key,
-            page_url=request.page_url,
-        )
-        return pb.SolveResponse(success=bool(token), token=token)
+        try:
+            token = await solver.resolver_recaptcha_v2(
+                site_key=request.site_key,
+                page_url=request.page_url,
+            )
+            return pb.SolveResponse(success=True, token=token)
+        except Exception as e:
+            logger.warning("SolveRecaptchaV2 falló para %s: %s", request.site_key, e)
+            return pb.SolveResponse(success=False, error=str(e))
 
 
 async def serve(host: str = "0.0.0.0", port: int = 50051):
