@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package captcha;
+
+service CaptchaSolver {
+  rpc SolveRecaptchaV2 (RecaptchaV2Request) returns (SolveResponse);
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {}
+message HealthCheckResponse {
+  bool   ok      = 1;
+  string version = 2;
+}
+
+message SolveResponse {
+  bool   success = 1;
+  string token   = 2;
+  string error   = 3;
+  int64  elapsed = 4;
+}
+
+message RecaptchaV2Request {
+  string site_key = 1;
+  string page_url = 2;
+}

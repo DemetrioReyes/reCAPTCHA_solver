@@ -1,0 +1,23 @@
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Chrome temp profiles usados por el solver
+chrome_cdp_*/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
