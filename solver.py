@@ -31,6 +31,9 @@ MAX_INTENTOS = 5
 MAX_CONCURRENT_SOLVES = int(os.environ.get("MAX_CONCURRENT_SOLVES", "3"))
 _SOLVE_SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_SOLVES)
 
+# Reintentos (con Chrome nuevo) si una resolución completa falla o no logra token.
+RECAPTCHA_RETRIES = int(os.environ.get("RECAPTCHA_RETRIES", "1"))
+
 CHROME_PATHS = [
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -329,7 +332,22 @@ async def _solve(site_key: str, page_url: str) -> str:
 async def resolver_recaptcha_v2(site_key: str, page_url: str, **kwargs) -> str:
     """Resuelve un reCAPTCHA v2. Awaitable y segura para correr concurrentemente:
     cada llamada lanza su propio Chrome en un puerto/perfil aislado, acotado por
-    MAX_CONCURRENT_SOLVES resoluciones en simultáneo."""
+    MAX_CONCURRENT_SOLVES resoluciones en simultáneo.
+
+    Si una resolución falla (Chrome crashea, el reCAPTCHA no carga, se agotan
+    los intentos de audio, etc.) reintenta con un Chrome nuevo hasta
+    RECAPTCHA_RETRIES veces antes de propagar el error."""
     logger.info("Solving reCAPTCHA v2: %s", page_url)
+    last_error = "no se pudo obtener el token"
     async with _SOLVE_SEMAPHORE:
-        return await _solve(site_key, page_url)
+        for intento in range(RECAPTCHA_RETRIES + 1):
+            try:
+                token = await _solve(site_key, page_url)
+                if token:
+                    return token
+            except Exception as e:
+                last_error = str(e)
+            else:
+                last_error = "no se pudo obtener el token"
+            logger.warning("Intento %d/%d falló para %s: %s", intento + 1, RECAPTCHA_RETRIES + 1, page_url, last_error)
+        raise RuntimeError(last_error)

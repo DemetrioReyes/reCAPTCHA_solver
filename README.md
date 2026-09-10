@@ -59,6 +59,7 @@ El servidor y `solver.py` son asíncronos de punta a punta, así que aceptan var
 - Cada `SolveRecaptchaV2` corre como una tarea de `asyncio` independiente, con su propio Chrome (puerto CDP y `--user-data-dir` generados dinámicamente), así que dos resoluciones concurrentes no compiten por el mismo puerto ni perfil.
 - Un `asyncio.Semaphore` (`MAX_CONCURRENT_SOLVES`, default `3`) limita cuántos Chrome corren al mismo tiempo para no saturar la máquina; las requests que exceden el límite quedan en cola hasta que se libera un slot.
 - El trabajo bloqueante (descarga/conversión de audio, reconocimiento de voz) se corre en threads (`asyncio.to_thread`) para no frenar al resto de las resoluciones en curso.
+- Si una resolución falla (Chrome crashea, el reCAPTCHA no carga, se agotan los intentos de audio, etc.) se reintenta con un Chrome nuevo. Por default 1 reintento (2 intentos en total); se configura con `RECAPTCHA_RETRIES`. Si todos los intentos fallan, `SolveRecaptchaV2` devuelve `success=false` con el motivo en `error` (nunca tira una excepción de gRPC sin explicación).
 
 Si necesitás probar varias resoluciones en paralelo desde Python, usá un stub async (`grpc.aio.insecure_channel`) y lanzá varios `SolveRecaptchaV2` con `asyncio.gather`; `example.py` sigue siendo síncrono (es solo un script de ejemplo/test de una sola resolución).
 
